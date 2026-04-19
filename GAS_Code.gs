@@ -5,17 +5,18 @@ function doGet() {
 
   const masterData = masterSheet.getDataRange().getValues();
   const master = masterData.slice(1).map(row => ({
-    name: row[2], // C열: 이름
-    grade: row[3], // D열: 분류 (R5/R4/R3...)
-    role: row[3] // D열: 분류 (운영진/본캐/부캐) - 필요시 수정
+    name: row[0], // A열: 이름
+    grade: row[1], // B열: 등급
+    role: row[2] // C열: 분류 (운영진/본캐/부캐)
   }));
 
   const participationData = participationSheet.getDataRange().getValues();
   const participation = participationData.slice(1).map(row => ({
-    시간대: row[0],
-    이름: row[2],
-    분류: row[3],
-    업데이트시간: row[4]
+    시간대: row[0], // A열: 시간대
+    번호: row[1],   // B열: 번호
+    이름: row[2],   // C열: 이름
+    분류: row[3],   // D열: 분류
+    업데이트시간: row[4] // E열: 업데이트시간
   }));
 
   return ContentService.createTextOutput(JSON.stringify({ master, participation }))
@@ -32,7 +33,7 @@ function doPost(e) {
     const time = data.time;
     const list = data.list; // [{name, role, time}]
 
-    // 해당 시간대의 기존 데이터 삭제
+    // 해당 시간대의 기존 데이터만 삭제 (다른 시간대 데이터는 유지)
     const rows = participationSheet.getDataRange().getValues();
     for (let i = rows.length - 1; i >= 1; i--) {
       if (rows[i][0] === time) {
@@ -58,19 +59,18 @@ function doPost(e) {
   }
 
   if (data.action === "addRow") {
+    // 참여자목록 탭 구조: A:이름, B:등급, C:분류
     masterSheet.appendRow([
-      "", // 시간대(필요시)
-      masterSheet.getLastRow(), 
       data.name,
-      data.role, // C열
-      new Date()
+      data.grade,
+      data.role
     ]);
     return ContentService.createTextOutput("Success");
   }
 
   if (data.action === "updateCell") {
-    // rowIndex는 0부터 시작하므로 헤더 고려 +2
-    const colMap = { "name": 3, "grade": 4, "role": 4 }; // 시트 구조에 맞게 조정 필요
+    // A:1, B:2, C:3
+    const colMap = { "name": 1, "grade": 2, "role": 3 };
     const colIndex = colMap[data.field];
     if (colIndex) {
       masterSheet.getRange(data.rowIndex + 2, colIndex).setValue(data.value);
