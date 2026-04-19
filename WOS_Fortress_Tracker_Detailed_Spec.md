@@ -50,6 +50,10 @@
 - **Border Radius**: `2rem` (32px) 이상의 둥근 모서리로 현대적이고 부드러운 느낌 강조
 - **Backdrop Blur**: `backdrop-blur-2xl`을 사용하여 유리 질감(Glassmorphism) 구현
 
+### 3.3 참여 현황 대시보드 (Main View)
+- **참여 명단 표시**: '참여 명단 (#명)' 형식으로 실시간 인원 카운트 표시
+- **이미지 스캔**: Gemini 3.0 기반 지능형 닉네임 추출 및 마스터 데이터 자동 매칭
+
 ---
 
 ## 4. 추후 기능 확장 로드맵 (Update Plan)

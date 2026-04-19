@@ -97,7 +97,7 @@ const App = () => {
           body: JSON.stringify({
             contents: [{
               parts: [
-                { text: "이미지에서 연맹원 닉네임을 모두 추출하여 JSON 형식으로 반환해줘: {\"names\": [\"닉네임1\", \"닉네임2\"]}. 다른 텍스트는 제외해." },
+                { text: "이미지에서 연맹원 닉네임을 모두 추출하여 다음 JSON 형식으로만 반환해줘. 다른 설명은 절대 하지 마: {\"names\": [\"닉네임1\", \"닉네임2\"]}" },
                 { inlineData: { mimeType: "image/jpeg", data: base64Data } }
               ]
             }]
@@ -106,10 +106,18 @@ const App = () => {
 
         const resData = await response.json();
         const aiText = resData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        const jsonMatch = aiText.match(/\{.*\}/s);
+        
+        // JSON 추출 정규식 강화: 마크다운 코드 블록이 있어도 내용을 찾음
+        const jsonMatch = aiText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (parsed.names) allExtractedNames = [...allExtractedNames, ...parsed.names];
+          try {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (parsed.names && Array.isArray(parsed.names)) {
+              allExtractedNames = [...allExtractedNames, ...parsed.names];
+            }
+          } catch (e) {
+            console.error("AI 응답 파싱 실패:", e);
+          }
         }
       }
 
@@ -190,7 +198,7 @@ const App = () => {
           <button onClick={() => setView('main')} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
             <ChevronLeft size={24} />
           </button>
-          <h2 className="text-xl font-black text-slate-900">마스터 명단 관리 <span className="text-[10px] text-blue-400 font-bold ml-1">v1.2.0</span></h2>
+          <h2 className="text-xl font-black text-slate-900">마스터 명단 관리 <span className="text-[10px] text-blue-400 font-bold ml-1">v1.2.1</span></h2>
           <div className="w-[100px]"></div> {/* 밸런스를 위한 더미 */}
         </header>
 
@@ -313,7 +321,7 @@ const App = () => {
         </div>
         <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-none">
           WOS 요새쟁탈 <span className="text-blue-600">명단작성 PRO</span>
-          <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">v1.2.0</span>
+          <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">v1.2.1</span>
         </h1>
       </header>
 
@@ -353,7 +361,7 @@ const App = () => {
           <div className="p-5 border-b border-blue-50 flex justify-between items-center bg-blue-50/20">
             <div className="flex items-center gap-2">
               <Database size={16} className="text-blue-500" />
-              <span className="text-xs font-black text-slate-700 uppercase">추출 결과 ({scannedData[activeTime].length}명)</span>
+              <span className="text-xs font-black text-slate-700 uppercase">참여 명단 ({scannedData[activeTime].length}명)</span>
             </div>
             <button 
               onClick={() => setScannedData(prev => ({...prev, [activeTime]: []}))}
