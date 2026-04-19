@@ -16,10 +16,10 @@ import {
 
 // --- 설정 (Configuration) ---
 const CONFIG = {
-  GAS_URL: "https://script.google.com/macros/s/AKfycbxM8qa36ZkYfNjHBDAcB9yQQHh7CESM4T5-B_n6pmHqGqxHiMyUxoH_igCrWHuKDU5m/exec",
+  GAS_URL: "https://script.google.com/macros/s/AKfycbxcCpXhhu8_ZDW0BaJEtzVkNvJ1K7biHOhdGkba3Eds4h5UDoXEvY9vToE5B_8tezD8/exec",
   SHEET_URL: "https://docs.google.com/spreadsheets/d/1ZowRVfk0S10Hscv_cLQOWdTgRPH7YIKTLPhvjYOp0Q0/edit?usp=sharing",
-  API_KEY: "", // 사용자의 Gemini API 키 입력 필요
-  MODEL_NAME: "gemini-2.5-flash-preview-09-2025" 
+  API_KEY: import.meta.env.VITE_GEMINI_API_KEY || "", 
+  MODEL_NAME: "gemini-1.5-flash" 
 };
 
 const App = () => {
@@ -113,7 +113,7 @@ const App = () => {
       const processed = allExtractedNames.map(name => {
         const cleanName = name.trim();
         const match = masterList.find(m => cleanName.includes(m.name) || m.name.includes(cleanName));
-        return match ? { ...match } : { name: cleanName, role: "본캐" };
+        return match ? { ...match } : { name: cleanName, grade: "R3", role: "본캐" };
       });
 
       setScannedData(prev => {
@@ -157,7 +157,7 @@ const App = () => {
   };
 
   const addMasterEntry = () => {
-    setMasterList([...masterList, { name: "새 유저", role: "본캐" }]);
+    setMasterList([...masterList, { name: "새 유저", grade: "R3", role: "본캐" }]);
   };
 
   const deleteMasterEntry = (index) => {
@@ -195,6 +195,13 @@ const App = () => {
                   onChange={(e) => handleEditMaster(i, 'name', e.target.value)}
                   className="flex-1 text-sm font-black text-slate-700 bg-transparent outline-none focus:text-blue-600"
                 />
+                <select 
+                  value={m.grade || "R3"} 
+                  onChange={(e) => handleEditMaster(i, 'grade', e.target.value)}
+                  className="text-xs font-bold p-1.5 rounded-lg bg-blue-50 border-none outline-none text-blue-600"
+                >
+                  {["R5", "R4", "R3", "R2", "R1"].map(g => <option key={g}>{g}</option>)}
+                </select>
                 <select 
                   value={m.role} 
                   onChange={(e) => handleEditMaster(i, 'role', e.target.value)}
