@@ -54,7 +54,7 @@ const App = () => {
     try {
       await fetch(CONFIG.GAS_URL, {
         method: 'POST',
-        headers: { "Content-Type": "application/json" },
+        // headers: { "Content-Type": "application/json" }, // CORS 오류 방지를 위해 제거
         body: JSON.stringify(payload)
       });
       if (payload.action === undefined) { // 전체 업데이트 시에만 메시지 표시
@@ -184,7 +184,7 @@ const App = () => {
           <button onClick={() => setView('main')} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
             <ChevronLeft size={24} />
           </button>
-          <h2 className="text-xl font-black text-slate-900">마스터 명단 관리 <span className="text-[10px] text-blue-400 font-bold ml-1">v1.1.1</span></h2>
+          <h2 className="text-xl font-black text-slate-900">마스터 명단 관리 <span className="text-[10px] text-blue-400 font-bold ml-1">v1.1.2</span></h2>
           <div className="w-[100px]"></div> {/* 밸런스를 위한 더미 */}
         </header>
 
@@ -254,7 +254,7 @@ const App = () => {
         </div>
         <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-none">
           WOS 요새쟁탈 <span className="text-blue-600">명단작성 PRO</span>
-          <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">v1.1.1</span>
+          <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">v1.1.2</span>
         </h1>
       </header>
 
