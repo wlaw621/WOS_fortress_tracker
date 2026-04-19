@@ -35,67 +35,35 @@ const App = () => {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    fetchAllData();
+    fetchMasterData();
   }, []);
 
-  const fetchAllData = async () => {
+  const fetchMasterData = async () => {
     setIsSyncing(true);
     try {
       const response = await fetch(CONFIG.GAS_URL);
       const data = await response.json();
-      
-      if (data.master) {
-        setMasterList(data.master);
-        if (data.participation) {
-          const formatted = { "12시": [], "18시": [], "21시": [] };
-          data.participation.forEach(item => {
-            if (formatted[item.시간대]) {
-              // 시트에서 불러올 때도 마스터 명단에 있는 이름으로 매칭 시도 (데이터 정합성 보강)
-              const cleanStr = (str) => str ? str.replace(/[^가-힣a-zA-Z0-9]/g, '').trim().toUpperCase() : "";
-              const cleanedName = cleanStr(item.이름 || item.name);
-              const match = data.master.find(m => cleanStr(m.name) === cleanedName);
-              
-              if (match) {
-                formatted[item.시간대].push({ ...match });
-              } else {
-                formatted[item.시간대].push({
-                  name: item.이름 || item.name,
-                  grade: item.분류 === '운영진' ? 'R4' : 'R3',
-                  role: item.분류 || '본캐'
-                });
-              }
-            }
-          });
-          setScannedData(formatted);
-        }
-      } else if (Array.isArray(data)) {
-        setMasterList(data);
-      }
+      setMasterList(data);
     } catch (e) {
-      console.error("데이터 로드 실패");
+      console.error("데이터 동기화 실패");
     } finally {
       setIsSyncing(false);
     }
   };
 
-  const saveParticipation = async (time, list) => {
+  const updateMasterData = async (payload) => {
     setIsSyncing(true);
     try {
       await fetch(CONFIG.GAS_URL, {
         method: 'POST',
-        body: JSON.stringify({
-          action: "saveParticipation",
-          time: time,
-          list: list.map(item => ({
-            name: item.name,
-            role: item.role,
-            time: time
-          }))
-        })
+        // headers: { "Content-Type": "application/json" }, // CORS 오류 방지를 위해 제거
+        body: JSON.stringify(payload)
       });
-      setStatusMsg("시트 저장 완료");
+      if (payload.action === undefined) { // 전체 업데이트 시에만 메시지 표시
+        setStatusMsg("데이터 동기화 완료");
+      }
     } catch (e) {
-      setStatusMsg("저장 실패");
+      setStatusMsg("연동 실패");
     } finally {
       setIsSyncing(false);
       setTimeout(() => setStatusMsg(""), 2000);
@@ -152,48 +120,40 @@ const App = () => {
         }
       }
 
-      // --- 데이터 정제 및 마스터 명단 매칭 로직 ---
-      const cleanStr = (str) => str.replace(/[^가-힣a-zA-Z0-9]/g, '').trim().toUpperCase();
+      // --- 데이터 정제 로직 ---
+      const cleanStr = (str) => str.replace(/[^가-힣a-zA-Z0-9]/g, '').trim();
 
       const processed = allExtractedNames.map(rawName => {
         const name = rawName.trim();
         const cleanedExtracted = cleanStr(name);
         
-        // 1. 마스터 리스트에서 유사도 매칭 (포함 및 접두사 확인)
+        // 1. 마스터 리스트에서 유사도 매칭 (포함 관계 확인)
+        // 마스터 리스트의 이름과 추출된 이름의 정제된 버전을 비교
         const match = masterList.find(m => {
           const cleanedMaster = cleanStr(m.name);
-          if (!cleanedMaster || !cleanedExtracted) return false;
-
-          // (1) 완전 일치 또는 포함 관계 확인
-          if (cleanedExtracted === cleanedMaster) return true;
-          if (cleanedExtracted.includes(cleanedMaster) || cleanedMaster.includes(cleanedExtracted)) return true;
-          
-          // (2) 접두사 매칭 (앞 2글자 이상 일치 시 동일 유저 확률 높음)
-          const prefixLen = Math.min(cleanedMaster.length, cleanedExtracted.length, 3);
-          if (prefixLen >= 2) {
-            if (cleanedMaster.substring(0, prefixLen) === cleanedExtracted.substring(0, prefixLen)) return true;
-          }
-
-          return false;
+          return (
+            cleanedExtracted.includes(cleanedMaster) || 
+            cleanedMaster.includes(cleanedExtracted) ||
+            name.includes(m.name) ||
+            m.name.includes(name)
+          );
         });
 
         if (match) {
-          // 중요: 매칭 성공 시 OCR 결과 대신 마스터 명단에 있는 공식 이름을 반환
-          return { ...match }; 
+          return { ...match }; // 마스터 정보 사용 (이름, 역할, 등급 등)
         } else {
-          // 매칭 실패 시 정제된 이름으로 신규 등록 처리
-          return { name: cleanedExtracted || name, grade: "R3", role: "본캐" }; 
+          return { name: name, grade: "R3", role: "본캐" }; // 신규 유저
         }
       });
 
-      let newList = [];
       setScannedData(prev => {
         const currentList = [...prev[activeTime], ...processed];
+        
+        // 중복 제거 (이름 기준) 및 정렬
         const uniqueList = [];
         const seenNames = new Set();
 
         for (const item of currentList) {
-          // 마스터 명단 이름 기준으로 중복 제거
           if (!seenNames.has(item.name)) {
             uniqueList.push(item);
             seenNames.add(item.name);
@@ -206,17 +166,11 @@ const App = () => {
           if (pA !== pB) return pA - pB;
           return a.name.localeCompare(b.name, 'ko');
         });
-        
-        newList = uniqueList;
+
         return { ...prev, [activeTime]: uniqueList };
       });
 
-      // 변경된 명단을 구글 시트에 자동 저장
-      if (newList.length > 0) {
-        saveParticipation(activeTime, newList);
-      }
-
-      setStatusMsg("추출 및 저장 완료!");
+      setStatusMsg("추출 완료!");
     } catch (err) {
       setStatusMsg("오류 발생");
     } finally {
@@ -250,20 +204,6 @@ const App = () => {
     });
   };
 
-  const updateMasterData = async (payload) => {
-    setIsSyncing(true);
-    try {
-      await fetch(CONFIG.GAS_URL, {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-    } catch (e) {
-      console.error("마스터 업데이트 실패");
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
   const addMasterEntry = () => {
     if (!newMember.name.trim()) return alert("이름을 입력해주세요.");
     
@@ -288,7 +228,7 @@ const App = () => {
           <button onClick={() => setView('main')} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
             <ChevronLeft size={24} />
           </button>
-          <h2 className="text-xl font-black text-slate-900">마스터 명단 관리 <span className="text-[10px] text-blue-400 font-bold ml-1">v1.3.0</span></h2>
+          <h2 className="text-xl font-black text-slate-900">마스터 명단 관리 <span className="text-[10px] text-blue-400 font-bold ml-1">v1.2.5</span></h2>
           <div className="w-[100px]"></div> {/* 밸런스를 위한 더미 */}
         </header>
 
@@ -411,7 +351,7 @@ const App = () => {
         </div>
         <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-none">
           WOS 요새쟁탈 <span className="text-blue-600">명단작성 PRO</span>
-          <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">v1.3.0</span>
+          <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">v1.2.5</span>
         </h1>
       </header>
 
