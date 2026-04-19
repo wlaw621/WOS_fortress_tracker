@@ -19,7 +19,7 @@ const CONFIG = {
   GAS_URL: "https://script.google.com/macros/s/AKfycbxcCpXhhu8_ZDW0BaJEtzVkNvJ1K7biHOhdGkba3Eds4h5UDoXEvY9vToE5B_8tezD8/exec",
   SHEET_URL: "https://docs.google.com/spreadsheets/d/1ZowRVfk0S10Hscv_cLQOWdTgRPH7YIKTLPhvjYOp0Q0/edit?usp=sharing",
   API_KEY: import.meta.env.VITE_GEMINI_API_KEY || "", 
-  MODEL_NAME: "gemini-3-flash" 
+  MODEL_NAME: "gemini-2.5-flash" 
 };
 
 const App = () => {
@@ -97,7 +97,7 @@ const App = () => {
           body: JSON.stringify({
             contents: [{
               parts: [
-                { text: "이미지에서 연맹원 닉네임을 모두 추출하여 다음 JSON 형식으로만 반환해줘. 다른 설명은 절대 하지 마: {\"names\": [\"닉네임1\", \"닉네임2\"]}" },
+                { text: "이미지에서 연맹원들의 닉네임을 모두 추출해줘. \n1. [GOM]과 같은 연맹 태그는 반드시 제거하고 순수 닉네임만 추출할 것. \n2. 특수문자가 포함된 닉네임도 정확하게 포함할 것. \n3. 결과는 반드시 다음 JSON 형식으로만 응답할 것: {\"names\": [\"닉네임1\", \"닉네임2\"]}" },
                 { inlineData: { mimeType: "image/jpeg", data: base64Data } }
               ]
             }]
@@ -198,7 +198,7 @@ const App = () => {
           <button onClick={() => setView('main')} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
             <ChevronLeft size={24} />
           </button>
-          <h2 className="text-xl font-black text-slate-900">마스터 명단 관리 <span className="text-[10px] text-blue-400 font-bold ml-1">v1.2.1</span></h2>
+          <h2 className="text-xl font-black text-slate-900">마스터 명단 관리 <span className="text-[10px] text-blue-400 font-bold ml-1">v1.2.3</span></h2>
           <div className="w-[100px]"></div> {/* 밸런스를 위한 더미 */}
         </header>
 
@@ -321,7 +321,7 @@ const App = () => {
         </div>
         <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-none">
           WOS 요새쟁탈 <span className="text-blue-600">명단작성 PRO</span>
-          <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">v1.2.1</span>
+          <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">v1.2.3</span>
         </h1>
       </header>
 
