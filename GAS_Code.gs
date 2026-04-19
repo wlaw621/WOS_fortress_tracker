@@ -7,17 +7,19 @@ function doGet() {
   const master = masterData.slice(1).map(row => ({
     name: row[0], // A열: 이름
     grade: row[1], // B열: 등급
-    role: row[2] // C열: 분류 (운영진/본캐/부캐)
+    role: row[2] // C열: 분류
   }));
 
   const participationData = participationSheet.getDataRange().getValues();
-  const participation = participationData.slice(1).map(row => ({
-    시간대: row[0], // A열: 시간대
-    번호: row[1],   // B열: 번호
-    이름: row[2],   // C열: 이름
-    분류: row[3],   // D열: 분류
-    업데이트시간: row[4] // E열: 업데이트시간
-  }));
+  const participation = participationData.slice(1)
+    .filter(row => row[0]) // 시간대가 있는 행만
+    .map(row => ({
+      시간대: row[0],
+      번호: row[1],
+      이름: row[2],
+      분류: row[3],
+      업데이트시간: row[4]
+    }));
 
   return ContentService.createTextOutput(JSON.stringify({ master, participation }))
     .setMimeType(ContentService.MimeType.JSON);
@@ -31,22 +33,24 @@ function doPost(e) {
 
   if (data.action === "saveParticipation") {
     const time = data.time;
-    const list = data.list; // [{name, role, time}]
+    const list = data.list; // [{name, role}]
 
-    // 해당 시간대의 기존 데이터만 삭제 (다른 시간대 데이터는 유지)
-    const rows = participationSheet.getDataRange().getValues();
-    for (let i = rows.length - 1; i >= 1; i--) {
-      if (rows[i][0] === time) {
-        participationSheet.deleteRow(i + 1);
-      }
+    // 1. 기존 데이터 로드 및 해당 시간대 데이터 제외 필터링
+    const lastRow = participationSheet.getLastRow();
+    let newData = [];
+    
+    if (lastRow > 1) {
+      const existingData = participationSheet.getRange(2, 1, lastRow - 1, 5).getValues();
+      // 해당 시간대가 아닌 데이터들만 남김
+      newData = existingData.filter(row => row[0] !== time);
     }
 
-    // 새로운 데이터 추가
+    // 2. 새로운 데이터(현재 스캔된 명단) 추가
     const now = new Date();
     const timestamp = Utilities.formatDate(now, "GMT+9", "yyyy-MM-dd HH:mm");
     
     list.forEach((item, index) => {
-      participationSheet.appendRow([
+      newData.push([
         time,
         index + 1,
         item.name,
@@ -55,21 +59,24 @@ function doPost(e) {
       ]);
     });
 
+    // 3. 시트 초기화 후 한꺼번에 쓰기 (성능 및 안정성 개선)
+    if (participationSheet.getLastRow() > 1) {
+      participationSheet.getRange(2, 1, participationSheet.getLastRow() - 1, 5).clearContent();
+    }
+    
+    if (newData.length > 0) {
+      participationSheet.getRange(2, 1, newData.length, 5).setValues(newData);
+    }
+
     return ContentService.createTextOutput("Success");
   }
 
   if (data.action === "addRow") {
-    // 참여자목록 탭 구조: A:이름, B:등급, C:분류
-    masterSheet.appendRow([
-      data.name,
-      data.grade,
-      data.role
-    ]);
+    masterSheet.appendRow([data.name, data.grade, data.role]);
     return ContentService.createTextOutput("Success");
   }
 
   if (data.action === "updateCell") {
-    // A:1, B:2, C:3
     const colMap = { "name": 1, "grade": 2, "role": 3 };
     const colIndex = colMap[data.field];
     if (colIndex) {
