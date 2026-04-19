@@ -19,7 +19,7 @@ const CONFIG = {
   GAS_URL: "https://script.google.com/macros/s/AKfycbxcCpXhhu8_ZDW0BaJEtzVkNvJ1K7biHOhdGkba3Eds4h5UDoXEvY9vToE5B_8tezD8/exec",
   SHEET_URL: "https://docs.google.com/spreadsheets/d/1ZowRVfk0S10Hscv_cLQOWdTgRPH7YIKTLPhvjYOp0Q0/edit?usp=sharing",
   API_KEY: import.meta.env.VITE_GEMINI_API_KEY || "", 
-  MODEL_NAME: "gemini-1.5-flash" 
+  MODEL_NAME: "gemini-3-flash" 
 };
 
 const App = () => {
@@ -49,18 +49,18 @@ const App = () => {
     }
   };
 
-  const updateMasterData = async (updatedList) => {
+  const updateMasterData = async (payload) => {
     setIsSyncing(true);
     try {
-      // 실제 구글 시트 업데이트를 위한 POST 요청 (GAS 스크립트 수정 필요)
       await fetch(CONFIG.GAS_URL, {
         method: 'POST',
-        body: JSON.stringify(updatedList)
+        body: JSON.stringify(payload)
       });
-      setMasterList(updatedList);
-      setStatusMsg("변경사항 저장 완료");
+      if (payload.action === undefined) { // 전체 업데이트 시에만 메시지 표시
+        setStatusMsg("데이터 동기화 완료");
+      }
     } catch (e) {
-      setStatusMsg("저장 실패");
+      setStatusMsg("연동 실패");
     } finally {
       setIsSyncing(false);
       setTimeout(() => setStatusMsg(""), 2000);
@@ -154,14 +154,26 @@ const App = () => {
     const newList = [...masterList];
     newList[index][field] = value;
     setMasterList(newList);
+    // 즉시 부분 업데이트 전송
+    updateMasterData({
+      action: "updateCell",
+      rowIndex: index,
+      field: field,
+      value: value
+    });
   };
 
   const addMasterEntry = () => {
-    setMasterList([...masterList, { name: "새 유저", grade: "R3", role: "본캐" }]);
+    const newEntry = { name: "새 유저", grade: "R3", role: "본캐" };
+    setMasterList([...masterList, newEntry]);
+    updateMasterData({ action: "addRow", ...newEntry });
   };
 
   const deleteMasterEntry = (index) => {
-    setMasterList(masterList.filter((_, i) => i !== index));
+    if(window.confirm("정말 삭제하시겠습니까?")) {
+      setMasterList(masterList.filter((_, i) => i !== index));
+      updateMasterData({ action: "deleteRow", rowIndex: index });
+    }
   };
 
   if (view === 'admin') {
@@ -172,10 +184,7 @@ const App = () => {
             <ChevronLeft size={24} />
           </button>
           <h2 className="text-xl font-black text-slate-900">마스터 명단 관리</h2>
-          <button onClick={() => updateMasterData(masterList)} className={`px-5 py-2 rounded-xl flex items-center gap-2 font-bold text-sm transition-all ${isSyncing ? 'bg-slate-100 text-slate-400' : 'bg-blue-600 text-white shadow-lg shadow-blue-200'}`}>
-            <Save size={18} />
-            저장하기
-          </button>
+          <div className="w-[100px]"></div> {/* 밸런스를 위한 더미 */}
         </header>
 
         <div className="flex-1 overflow-hidden flex flex-col gap-4">
@@ -349,6 +358,7 @@ const App = () => {
         <p className="text-[10px] font-black tracking-[0.2em] text-blue-900 uppercase">
           1953 GOM 연맹 created by 판다곰
         </p>
+        <span className="text-[9px] text-blue-300 font-bold opacity-50">v1.1.0</span>
       </footer>
 
       <style dangerouslySetInnerHTML={{ __html: `
