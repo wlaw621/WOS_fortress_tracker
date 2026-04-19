@@ -30,6 +30,8 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newMember, setNewMember] = useState({ name: "", grade: "R3", role: "본캐" });
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -165,13 +167,17 @@ const App = () => {
   };
 
   const addMasterEntry = () => {
-    const newEntry = { name: "새 유저", grade: "R3", role: "본캐" };
-    setMasterList([...masterList, newEntry]);
-    updateMasterData({ action: "addRow", ...newEntry });
+    if (!newMember.name.trim()) return alert("이름을 입력해주세요.");
+    
+    setMasterList([...masterList, newMember]);
+    updateMasterData({ action: "addRow", ...newMember });
+    
+    setNewMember({ name: "", grade: "R3", role: "본캐" });
+    setIsAddModalOpen(false);
   };
 
   const deleteMasterEntry = (index) => {
-    if(window.confirm("정말 삭제하시겠습니까?")) {
+    if(window.confirm(`${masterList[index].name} 유저를 삭제하시겠습니까?`)) {
       setMasterList(masterList.filter((_, i) => i !== index));
       updateMasterData({ action: "deleteRow", rowIndex: index });
     }
@@ -184,14 +190,17 @@ const App = () => {
           <button onClick={() => setView('main')} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500">
             <ChevronLeft size={24} />
           </button>
-          <h2 className="text-xl font-black text-slate-900">마스터 명단 관리 <span className="text-[10px] text-blue-400 font-bold ml-1">v1.1.2</span></h2>
+          <h2 className="text-xl font-black text-slate-900">마스터 명단 관리 <span className="text-[10px] text-blue-400 font-bold ml-1">v1.2.0</span></h2>
           <div className="w-[100px]"></div> {/* 밸런스를 위한 더미 */}
         </header>
 
         <div className="flex-1 overflow-hidden flex flex-col gap-4">
           <div className="flex justify-between items-center px-2">
             <span className="text-xs font-bold text-slate-400">전체 인원: {masterList.length}명</span>
-            <button onClick={addMasterEntry} className="text-blue-600 flex items-center gap-1 text-xs font-black">
+            <button 
+              onClick={() => setIsAddModalOpen(true)} 
+              className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-black shadow-lg shadow-blue-100 hover:scale-105 transition-transform"
+            >
               <UserPlus size={14} /> 유저 추가
             </button>
           </div>
@@ -229,6 +238,56 @@ const App = () => {
           </div>
         </div>
         
+        {/* 추가 팝업 모달 */}
+        {isAddModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsAddModalOpen(false)} />
+            <div className="relative bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-slide-up">
+              <h3 className="text-xl font-black text-slate-900 mb-6">새 연맹원 추가</h3>
+              <div className="space-y-5">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block">닉네임</label>
+                  <input 
+                    autoFocus
+                    value={newMember.name}
+                    onChange={(e) => setNewMember({...newMember, name: e.target.value})}
+                    placeholder="인게임 닉네임 입력"
+                    className="w-full bg-slate-50 border-none rounded-2xl px-5 py-4 text-sm font-black outline-none focus:ring-2 ring-blue-500/20"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block">등급</label>
+                    <select 
+                      value={newMember.grade}
+                      onChange={(e) => setNewMember({...newMember, grade: e.target.value})}
+                      className="w-full bg-slate-50 border-none rounded-2xl px-4 py-4 text-sm font-black outline-none"
+                    >
+                      {["R5", "R4", "R3", "R2", "R1"].map(g => <option key={g}>{g}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block">분류</label>
+                    <select 
+                      value={newMember.role}
+                      onChange={(e) => setNewMember({...newMember, role: e.target.value})}
+                      className="w-full bg-slate-50 border-none rounded-2xl px-4 py-4 text-sm font-black outline-none"
+                    >
+                      <option>운영진</option>
+                      <option>본캐</option>
+                      <option>부캐</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button onClick={() => setIsAddModalOpen(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-sm">취소</button>
+                  <button onClick={addMasterEntry} className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-blue-200">추가하기</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <footer className="mt-6 text-center">
           <a href={CONFIG.SHEET_URL} target="_blank" rel="noreferrer" className="text-[10px] text-slate-400 underline flex items-center justify-center gap-1">
             원본 구글 시트에서 열기 <ArrowRight size={10}/>
@@ -254,7 +313,7 @@ const App = () => {
         </div>
         <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-none">
           WOS 요새쟁탈 <span className="text-blue-600">명단작성 PRO</span>
-          <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">v1.1.2</span>
+          <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full ml-2 align-middle">v1.2.0</span>
         </h1>
       </header>
 
